@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, LogIn, UserPlus, Home } from "lucide-react";
+import { Mail, LogIn, UserPlus, Home, AlertTriangle } from "lucide-react";
 
 const Navbar = () => {
   const location = useLocation();
@@ -34,6 +34,17 @@ const Navbar = () => {
             >
               <Mail size={16} />
               Contact
+            </Button>
+          </Link>
+          
+          <Link to="/bounced-emails">
+            <Button 
+              variant={isActive("/bounced-emails") ? "default" : "ghost"} 
+              size="sm"
+              className="gap-2"
+            >
+              <AlertTriangle size={16} />
+              Bounced Emails
             </Button>
           </Link>
           
