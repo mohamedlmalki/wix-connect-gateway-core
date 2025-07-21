@@ -7,21 +7,29 @@ import { Building, CheckCircle, PlusCircle, RefreshCw, Terminal } from "lucide-r
 import { useToast } from "@/components/ui/use-toast";
 import Navbar from "@/components/Navbar";
 
+// Define the structure of a Log entry
 interface LogEntry {
   _id: string;
   _createdDate: string;
   status: 'INFO' | 'SUCCESS' | 'ERROR';
   message: string;
+  context: string;
 }
 
 const SiteManagement = () => {
   const { toast } = useToast();
+  
+  // State for the "Add Site" form
   const [siteName, setSiteName] = useState("");
   const [siteId, setSiteId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [isAddingSite, setIsAddingSite] = useState(false);
+
+  // State for the list of sites
   const [sites, setSites] = useState<any[]>([]);
   const [isLoadingSites, setIsLoadingSites] = useState(true);
+
+  // State for the logs
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
@@ -34,17 +42,20 @@ const SiteManagement = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ siteName, siteId, apiKey }),
       });
+
       if (!response.ok) {
         const errorResult = await response.json();
         throw new Error(errorResult.error || 'Failed to add site');
       }
+
       toast({ title: "Success!", description: `Site "${siteName}" has been added.` });
       setSiteName(""); setSiteId(""); setApiKey("");
       await loadSites();
-      await fetchLogs();
+      await fetchLogs(); // Refresh logs after adding a site
+
     } catch (error: any) {
       toast({ title: "Error adding site", description: error.message, variant: "destructive" });
-      await fetchLogs();
+      await fetchLogs(); // Refresh logs even if there is an error
     } finally {
       setIsAddingSite(false);
     }
@@ -63,12 +74,15 @@ const SiteManagement = () => {
       setIsLoadingSites(false);
     }
   };
-  
+
   const fetchLogs = async () => {
     setIsLoadingLogs(true);
     try {
         const response = await fetch('/_functions/logs');
-        if (!response.ok) throw new Error('Failed to fetch logs.');
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'Failed to fetch logs.');
+        };
         const logData = await response.json();
         setLogs(logData);
     } catch (error: any) {
@@ -87,7 +101,7 @@ const SiteManagement = () => {
     if (status === 'SUCCESS') return 'text-green-500';
     if (status === 'ERROR') return 'text-red-500';
     return 'text-muted-foreground';
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -96,8 +110,13 @@ const SiteManagement = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex items-center gap-4 animate-fade-in">
             <Building className="h-10 w-10 text-primary" />
-            <div><h1 className="text-3xl font-bold">Site Management</h1><p className="text-muted-foreground">Add new Wix sites and view backend activity.</p></div>
+            <div>
+              <h1 className="text-3xl font-bold">Site Management</h1>
+              <p className="text-muted-foreground">Add new Wix sites and view backend activity.</p>
+            </div>
           </div>
+
+          {/* --- Add New Site Card --- */}
           <Card className="bg-gradient-card shadow-card border-primary/10">
             <CardHeader><CardTitle className="flex items-center gap-2"><PlusCircle className="h-5 w-5" />Add a New Site</CardTitle></CardHeader>
             <CardContent>
@@ -111,24 +130,15 @@ const SiteManagement = () => {
               </form>
             </CardContent>
           </Card>
+          
+          {/* --- Live Log Viewer --- */}
           <Card className="bg-gradient-card shadow-card border-primary/10">
-            <CardHeader><CardTitle>Connected Sites</CardTitle><CardDescription>This is the list of sites you can import users to.</CardDescription></CardHeader>
-            <CardContent>
-              {isLoadingSites ? <p>Loading sites...</p> : (
-                <div className="space-y-2">
-                  {sites.map((site) => (
-                    <div key={site._id} className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-                      <p className="font-medium">{site.siteName}</p>
-                      <div className="flex items-center gap-2 text-sm text-green-500"><CheckCircle className="h-4 w-4" />Connected</div>
-                    </div>
-                  ))}
-                  {sites.length === 0 && <p className="text-muted-foreground">No sites added yet.</p>}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-card shadow-card border-primary/10">
-            <CardHeader><div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2"><Terminal className="h-5 w-5" />Backend Activity Log</CardTitle><Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoadingLogs}><RefreshCw className={`h-4 w-4 ${isLoadingLogs ? 'animate-spin' : ''}`} /></Button></div></CardHeader>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2"><Terminal className="h-5 w-5" />Backend Activity Log</CardTitle>
+                <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoadingLogs}><RefreshCw className={`h-4 w-4 ${isLoadingLogs ? 'animate-spin' : ''}`} /></Button>
+              </div>
+            </CardHeader>
             <CardContent>
               <div className="bg-gray-900 text-white font-mono text-xs rounded-lg p-4 h-64 overflow-y-auto">
                 {isLoadingLogs ? <p>Loading logs...</p> : (logs.length === 0 ? <p>No log entries yet.</p> : logs.map(log => (
