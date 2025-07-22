@@ -7,11 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-// --- NEW: Added KeyRound icon ---
 import { UserPlus, Upload, PlayCircle, Building, CheckCircle, Eye, RefreshCw, Terminal, KeyRound } from "lucide-react"; 
 import { useToast } from "@/components/ui/use-toast";
 import Navbar from "@/components/Navbar";
-// --- NEW: Import faker library ---
 import { faker } from "@faker-js/faker"; 
 
 interface LogEntry {
@@ -47,7 +45,6 @@ const AdminImport = () => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
-    // This function is unchanged
     const loadSites = async () => {
         setIsLoadingSites(true);
         try {
@@ -56,7 +53,6 @@ const AdminImport = () => {
             const siteList = await response.json();
             setSites(siteList);
             if (siteList.length > 0 && !selectedSite) {
-                // Set the siteId for the backend, not the database _id
                 setSelectedSite(siteList[0].siteId); 
             }
         } catch (error: any) {
@@ -66,7 +62,6 @@ const AdminImport = () => {
         }
     };
 
-    // This function is unchanged
     const fetchLogs = async () => {
         setIsLoadingLogs(true);
         try {
@@ -84,49 +79,27 @@ const AdminImport = () => {
         }
     };
 
-    // --- NEW: Function to generate passwords ---
-    const handleGeneratePasswords = () => {
-        if (!recipientEmails) {
-            toast({ title: "No Emails", description: "Please enter at least one email address.", variant: "destructive" });
-            return;
-        }
-
-        const lines = recipientEmails.split('\n').filter(line => line.trim() !== "");
-        
-        const processedLines = lines.map(line => {
-            const email = line.split(':')[0].trim();
-            if (!email.includes('@')) return line; // Leave lines that aren't emails alone
-
-            // Generate a secure 12-character password
-            const password = faker.internet.password({ length: 12, memorable: false, pattern: /\w/ });
-            return `${email}:${password}`; // Use a colon as a separator
-        });
-
-        setRecipientEmails(processedLines.join('\n'));
-        toast({ title: "Success", description: "Passwords have been generated for all emails." });
-    };
-
-    // --- MODIFIED: The main import function is now updated to handle the new format ---
+    // ★★★ THIS IS THE ONLY FUNCTION THAT HAS CHANGED ★★★
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!selectedSite || !recipientEmails) {
-            toast({ title: "Missing Information", description: "Please select a site and provide user data.", variant: "destructive" });
+            toast({ title: "Missing Information", description: "Please select a site and provide at least one email.", variant: "destructive" });
             return;
         }
 
         setIsSubmitting(true);
 
-        const usersToImport = recipientEmails.split('\n').filter(line => line.includes(':')).map(line => {
-            const parts = line.split(':');
-            return {
-                email: parts[0].trim(),
-                password: parts.slice(1).join(':').trim() // This correctly handles passwords that might contain a colon
-            };
-        });
+        // 1. We no longer look for a password. Just get the emails.
+        const usersToImport = recipientEmails
+            .split('\n')
+            .map(email => email.trim())
+            .filter(email => email.includes('@')) // Basic validation
+            .map(email => ({ email })); // Format for the backend
 
+        // 2. The validation message is updated.
         if (usersToImport.length === 0) {
-            toast({ title: "Invalid Format", description: "No valid users to import. Please ensure the format is 'email:password'.", variant: "destructive" });
+            toast({ title: "No Valid Emails", description: "No valid email addresses found to import.", variant: "destructive" });
             setIsSubmitting(false);
             return;
         }
@@ -197,14 +170,16 @@ const AdminImport = () => {
                     <form onSubmit={handleSubmit}>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                             <Card className="bg-gradient-card shadow-card border-primary/10">
-                                <CardHeader><CardTitle>Recipient Emails</CardTitle><CardDescription>Enter one email per line, then generate passwords.</CardDescription></CardHeader>
+                                {/* ★★★ UI TEXT AND BUTTON HAVE CHANGED HERE ★★★ */}
+                                <CardHeader>
+                                    <CardTitle>Recipient Emails</CardTitle>
+                                    {/* 1. Description is updated. */}
+                                    <CardDescription>Enter one email address per line. Wix will invite them to set their own password.</CardDescription>
+                                </CardHeader>
                                 <CardContent>
                                     <Textarea value={recipientEmails} onChange={(e) => setRecipientEmails(e.target.value)} placeholder="user1@example.com&#10;user2@example.com" className="h-48 resize-y font-mono text-sm" required />
                                     
-                                    {/* --- NEW: Button to generate passwords --- */}
-                                    <Button type="button" variant="outline" size="sm" className="mt-4 gap-2" onClick={handleGeneratePasswords}>
-                                        <KeyRound className="h-4 w-4" /> Generate Passwords
-                                    </Button>
+                                    {/* 2. "Generate Passwords" button has been removed as it's no longer needed. */}
 
                                 </CardContent>
                             </Card>
