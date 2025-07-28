@@ -259,6 +259,7 @@ const AdminImport = () => {
         setIsSubmitting(false);
     };
 
+    // ★★★ THIS IS THE ONLY PART THAT HAS BEEN CHANGED ★★★
     const handleSearch = async () => {
         if (!selectedSite) {
             toast.warning("Please select a site to search.");
@@ -283,18 +284,26 @@ const AdminImport = () => {
                 }),
             });
             
-            const responseText = await response.text();
-            if (!responseText) {
-                throw new Error("Received an empty response from the server. Check the backend logs for errors.");
-            }
-            const result = JSON.parse(responseText);
+            // This handles the response from your working "bulletproof" backend
+            const bulletproofResponse = await response.json();
 
             if (!response.ok) {
-                throw new Error(result.message || "An unknown error occurred during the search.");
+                throw new Error(bulletproofResponse.message || "An unknown error occurred during the search.");
             }
 
-            setSearchResults(result.members);
-            toast.success(`Search complete. Found ${result.members.length} member(s).`);
+            // 1. Unpack the 'body' string to get the real data object.
+            const result = JSON.parse(bulletproofResponse.body);
+
+            // 2. Translate the raw API data into the format the table needs.
+            const transformedMembers = result.members.map((member: any) => ({
+                id: member.id,
+                name: member.profile?.nickname || 'N/A',
+                email: member.loginEmail || 'Email Not Found'
+            }));
+
+            // 3. Set the state with the correctly formatted data.
+            setSearchResults(transformedMembers);
+            toast.success(`Search complete. Found ${transformedMembers.length} member(s).`);
 
         } catch (error) {
             const errorMessage = (error instanceof Error) ? error.message : "An unknown error occurred.";
